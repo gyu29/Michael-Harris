@@ -19,9 +19,11 @@ This system analyzes price data to identify specific candlestick patterns across
 ```
 Michael-Harris/
 ├── config.py                  # Configuration parameters
-├── dax_trading_pattern/       # Core package
+├── dax_trading_pattern/src       # Core package
+    ├── data_loader.py            # Backtesting implementation
+    └── init.py
 ├── main.py                    # Main execution script
-├── notebooks/                 # Jupyter notebooks (if any)
+├── notebooks/                 # Jupyter notebook originally inspired from
 ├── preprocessing_data/        
 │   └── signal_generator.py    # Signal generation logic
 ├── requirements.txt           # Dependencies
