@@ -90,3 +90,9 @@ The system provides comprehensive backtest results including:
 - Maximum drawdown
 - Win rate
 - Best/worst/average trade performance
+- 
+## License
+
+This project is licensed under the MIT License. See the LICENSE file for details.
+The author is not liable for any damages caused by the following software included within the following project. 
+
