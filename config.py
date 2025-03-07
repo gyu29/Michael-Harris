@@ -1,3 +1,5 @@
+# config.py
+
 DATA_FOLDER = "./data"
 
 SL_PERCENTAGE = 0.04  

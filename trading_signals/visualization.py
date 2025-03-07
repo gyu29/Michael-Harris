@@ -1,3 +1,5 @@
+# visualization.py
+
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from config import CHART_WIDTH, CHART_HEIGHT, CHART_BG_COLOR, CHART_PAPER_COLOR, CHART_FONT_COLOR
@@ -28,11 +30,11 @@ def plot_candlestick_with_signals(df, start_index=0, num_rows=100):
         width=CHART_WIDTH, 
         height=CHART_HEIGHT, 
         plot_bgcolor=CHART_BG_COLOR,
-        paper_bgcolor=CHART_PAPER_COLOR,
-        font=dict(color=CHART_FONT_COLOR),
-        xaxis=dict(showgrid=False, zeroline=False),
-        yaxis=dict(showgrid=False, zeroline=False),
-        showlegend=True,
+        # paper_bgcolor=CHART_PAPER_COLOR,
+        # font=dict(color=CHART_FONT_COLOR),
+        # xaxis=dict(showgrid=False, zeroline=False),
+        # yaxis=dict(showgrid=False, zeroline=False),
+        # showlegend=True,
         legend=dict(
             x=0.01,
             y=0.99,
