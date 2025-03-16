@@ -10,8 +10,8 @@ from trading_signals.visualization import plot_candlestick_with_signals, plot_ba
 
 def main():
     parser = argparse.ArgumentParser(description='DAX Pattern Trading System')
-    parser.add_argument('--data_folder', type=str, default='./data_forex', 
-                        help='Path to the folder containing price data CSV files')
+    parser.add_argument('--data_folder', type=str, default='./dax_pattern_trading/data', 
+                    help='Path to the folder containing price data CSV files')
     parser.add_argument('--visualize', action='store_true', 
                         help='Visualize signals on charts')
     parser.add_argument('--start_index', type=int, default=300,
@@ -39,7 +39,6 @@ def main():
     
     print("\nRunning backtests...")
     results, heatmaps = run_backtest(dataframes)
-    
     agg_returns = sum([r["Return [%]"] for r in results])
     num_trades = sum([r["# Trades"] for r in results])
     max_drawdown = min([r["Max. Drawdown [%]"] for r in results])
@@ -63,3 +62,4 @@ def main():
 if __name__ == "__main__":
     tqdm.pandas()
     main()
+

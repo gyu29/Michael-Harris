@@ -8,10 +8,16 @@ import numpy as np
 
 def read_csv_to_dataframe(file_path):
     df = pd.read_csv(file_path)
-    df["Gmt time"] = df["Gmt time"].str.replace(".000", "")
-    df['Gmt time'] = pd.to_datetime(df['Gmt time'], format='%d.%m.%Y %H:%M:%S')
-    df = df[df.High != df.Low]  # Remove flat candles
-    df.set_index("Gmt time", inplace=True)
+    date_column = "Gmt time" if "Gmt time" in df.columns else "Date"
+    
+    if date_column == "Gmt time":
+        df[date_column] = df[date_column].str.replace(".000", "")
+        df[date_column] = pd.to_datetime(df[date_column], format='%d.%m.%Y %H:%M:%S')
+    else:
+        df[date_column] = pd.to_datetime(df[date_column])
+    df = df[df.High != df.Low]
+    df.set_index(date_column, inplace=True)
+    
     return df
 
 def read_data_folder(folder_path="./data"):
