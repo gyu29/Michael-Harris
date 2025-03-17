@@ -73,36 +73,22 @@ def add_pointpos_column(df, signal_column):
     df['pointpos'] = df.apply(lambda row: pointpos(row), axis=1)
     return df
 
-def multi_timeframe_signal(df, current_candle, timeframes=[5, 15, 30]):
-    current_pos = df.index.get_loc(current_candle)
-    if current_pos < max(timeframes) + 3:
-        return 0
+def multi_timeframe_signal(df):
+    df_1h = df.resample('1H').agg({'Open': 'first', 'High': 'max', 'Low': 'min', 'Close': 'last'})
+    df_4h = df.resample('4H').agg({'Open': 'first', 'High': 'max', 'Low': 'min', 'Close': 'last'})
     
-    signals = []
-    base_signal = total_signal(df, current_candle)
-    signals.append(base_signal)
+    df_1h = add_total_signal(df_1h)
+    df_4h = add_total_signal(df_4h)
     
-    for tf in timeframes:
-        subset_length = current_pos + 1
-        subset = df.iloc[max(0, current_pos - subset_length * 2):current_pos + 1]
-        
-        resampled = subset.resample(f'{tf}T').agg({
-            'Open': 'first',
-            'High': 'max',
-            'Low': 'min',
-            'Close': 'last'
-        }).dropna()
-        
-        if len(resampled) > 3:
-            tf_signal = total_signal(resampled, resampled.index[-1])
-            signals.append(tf_signal)
+    df['Signal_1h'] = np.nan
+    df['Signal_4h'] = np.nan
     
-    buy_signals = signals.count(2)
-    sell_signals = signals.count(1)
+    for idx in df.index:
+        df.loc[idx, 'Signal_1h'] = df_1h.loc[idx:idx, 'TotalSignal'].iloc[0] if idx in df_1h.index else 0
+        df.loc[idx, 'Signal_4h'] = df_4h.loc[idx:idx, 'TotalSignal'].iloc[0] if idx in df_4h.index else 0
     
-    if buy_signals > sell_signals and buy_signals > len(signals) / 3:
-        return 2
-    elif sell_signals > buy_signals and sell_signals > len(signals) / 3:
-        return 1
-    else:
-        return 0
+    df['CombinedSignal'] = 0
+    df.loc[(df['TotalSignal'] == 2) & (df['Signal_1h'] == 2), 'CombinedSignal'] = 2
+    df.loc[(df['TotalSignal'] == 1) & (df['Signal_1h'] == 1), 'CombinedSignal'] = 1
+    
+    return df
