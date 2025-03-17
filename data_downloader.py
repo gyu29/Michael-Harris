@@ -3,7 +3,7 @@ import requests
 
 ticker = '^spx'
 start_date = '20151201'
-end_date = '20250316'
+end_date = '20200316'
 interval = 'd'
 
 url = f'https://stooq.com/q/d/l/?s={ticker}&d1={start_date}&d2={end_date}&i={interval}'
