@@ -84,8 +84,17 @@ def multi_timeframe_signal(df):
     df['Signal_4h'] = np.nan
     
     for idx in df.index:
-        df.loc[idx, 'Signal_1h'] = df_1h.loc[idx:idx, 'TotalSignal'].iloc[0] if idx in df_1h.index else 0
-        df.loc[idx, 'Signal_4h'] = df_4h.loc[idx:idx, 'TotalSignal'].iloc[0] if idx in df_4h.index else 0
+        h1_idx = idx.floor('1H')
+        if h1_idx in df_1h.index:
+            df.loc[idx, 'Signal_1h'] = df_1h.loc[h1_idx, 'TotalSignal']
+        else:
+            df.loc[idx, 'Signal_1h'] = 0
+            
+        h4_idx = idx.floor('4H')
+        if h4_idx in df_4h.index:
+            df.loc[idx, 'Signal_4h'] = df_4h.loc[h4_idx, 'TotalSignal']
+        else:
+            df.loc[idx, 'Signal_4h'] = 0
     
     df['CombinedSignal'] = 0
     df.loc[(df['TotalSignal'] == 2) & (df['Signal_1h'] == 2), 'CombinedSignal'] = 2

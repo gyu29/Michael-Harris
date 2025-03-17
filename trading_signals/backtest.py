@@ -29,10 +29,10 @@ class PatternStrategy(Strategy):
             
             self.sell(size=self.position_size * self.equity, sl=sl_price, tp=tp_price)
 
-def backtest_with_params(df, sl_pct, tp_pct):
+def backtest_with_params(df, sl_pct_param, tp_pct_param):
     class ParamPatternStrategy(PatternStrategy):
-        sl_pct = sl_pct
-        tp_pct = tp_pct
+        sl_pct = sl_pct_param
+        tp_pct = tp_pct_param
         
     bt = Backtest(df, ParamPatternStrategy, cash=5000, margin=1/5, commission=0.0002)
     stats = bt.run()
