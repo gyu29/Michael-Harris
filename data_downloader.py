@@ -2,7 +2,7 @@ import pandas as pd
 import requests
 
 ticker = '^spx'
-start_date = '20151201'
+start_date = '20001201'
 end_date = '20200316'
 interval = 'd'
 
