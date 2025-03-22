@@ -1,6 +1,6 @@
 # config.py
 
-DATA_FOLDER = "./data"
+DATA_FOLDER = "dax_pattern_trading/data"
 
 SL_PERCENTAGE = 0.04  
 TP_PERCENTAGE = 0.02  

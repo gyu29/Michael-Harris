@@ -10,7 +10,7 @@ class PatternStrategy(Strategy):
     position_size = POSITION_SIZE
     
     def init(self):
-        self.signal = self.data.TotalSignal
+        self.signal = self.I(lambda: self.data.TotalSignal)
         
     def next(self):
         current_signal = self.signal[-1]
@@ -33,23 +33,31 @@ def backtest_with_params(df, sl_pct_param, tp_pct_param):
     class ParamPatternStrategy(PatternStrategy):
         sl_pct = sl_pct_param
         tp_pct = tp_pct_param
-        
+    
+    if 'TotalSignal' not in df.columns:
+        raise ValueError("DataFrame missing 'TotalSignal' column")
+    
+    df['TotalSignal'] = df['TotalSignal'].astype(float)
+    
+    signal_counts = df['TotalSignal'].value_counts()
+    print(f"Signal distribution in backtest: {signal_counts.to_dict()}")
+    
     bt = Backtest(df, ParamPatternStrategy, cash=5000, margin=1/5, commission=0.0002)
     stats = bt.run()
     
     result = {
         "Return [%]": stats['Return [%]'],
         "# Trades": stats['# Trades'],
-        "Win Rate [%]": stats['Win Rate [%]'],
+        "Win Rate [%]": stats.get('Win Rate [%]', float('nan')),
         "Max. Drawdown [%]": stats['Max. Drawdown [%]'],
-        "Avg. Drawdown [%]": stats['Avg. Drawdown [%]'],
-        "Best Trade [%]": stats['Best Trade [%]'],
-        "Worst Trade [%]": stats['Worst Trade [%]'],
-        "Avg. Trade [%]": stats['Avg. Trade [%]'],
-        "SQN": stats['SQN'],
-        "Sharpe Ratio": stats['Sharpe Ratio'],
-        "Sortino Ratio": stats['Sortino Ratio'],
-        "Calmar Ratio": stats['Calmar Ratio'],
+        "Avg. Drawdown [%]": stats.get('Avg. Drawdown [%]', float('nan')),
+        "Best Trade [%]": stats.get('Best Trade [%]', float('nan')),
+        "Worst Trade [%]": stats.get('Worst Trade [%]', float('nan')),
+        "Avg. Trade [%]": stats.get('Avg. Trade [%]', float('nan')),
+        "SQN": stats.get('SQN', float('nan')),
+        "Sharpe Ratio": stats.get('Sharpe Ratio', float('nan')),
+        "Sortino Ratio": stats.get('Sortino Ratio', float('nan')),
+        "Calmar Ratio": stats.get('Calmar Ratio', float('nan')),
     }
     
     return result, stats
@@ -79,7 +87,7 @@ def run_backtest_with_cv(dataframes, num_folds=5):
     all_stats = []
     heatmaps = []
     
-    for df in dataframes:
+    for df in tqdm(dataframes, desc="Running cross-validation"):
         fold_size = len(df) // num_folds
         fold_results = []
         fold_stats = []
@@ -101,8 +109,10 @@ def run_backtest(dataframes):
     results = []
     heatmaps = []
     
-    for df in dataframes:
+    for i, df in enumerate(tqdm(dataframes, desc="Running backtests")):
+        print(f"Backtesting dataframe {i} with {len(df)} rows")
         best_params, test_result, test_stats = optimize_parameters(df)
+        print(f"Best parameters: SL={best_params['sl']}, TP={best_params['tp']}")
         results.append(test_result)
         
     return results, heatmaps
