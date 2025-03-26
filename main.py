@@ -2,7 +2,8 @@ import pandas as pd
 from tqdm import tqdm
 import argparse
 from dax_pattern_trading.src.data_loader import read_data_folder
-from preprocessing_data.signal_generator import add_total_signal, add_pointpos_column, multi_timeframe_signal
+from preprocessing_data.signal_generator import generate_signals, add_pointpos_column, multi_timeframe_signal
+from preprocessing_data.pattern_config import DEFAULT_PATTERN_CONFIG, SIMPLIFIED_PATTERN_CONFIG
 from trading_signals.backtest import run_backtest, run_backtest_with_cv
 from trading_signals.visualization import plot_candlestick_with_signals, plot_backtest_results
 import numpy as np
@@ -32,7 +33,8 @@ def main():
     for i, df in enumerate(dataframes):
         print("Working on dataframe", i, "...")
         
-        df = add_total_signal(df, use_simplified=args.use_simplified)
+        pattern_config = SIMPLIFIED_PATTERN_CONFIG if args.use_simplified else DEFAULT_PATTERN_CONFIG
+        df = generate_signals(df, pattern_config)
         
         if args.multi_timeframe and df.index.dtype.kind == 'M':
             try:

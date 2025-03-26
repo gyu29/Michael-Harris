@@ -1,103 +1,92 @@
 import pandas as pd
-import numpy as np
 from tqdm import tqdm
+from .pattern_config import DEFAULT_PATTERN_CONFIG, SIMPLIFIED_PATTERN_CONFIG
 
-def total_signal(df, current_candle):
-    current_pos = df.index.get_loc(current_candle)
+def generate_signals(df, pattern_config=None):
+    if pattern_config is None:
+        pattern_config = DEFAULT_PATTERN_CONFIG
+        
+    df = df.copy()
     
-    if current_pos < 3:
-        return 0
+    # Initialize signal column
+    df['TotalSignal'] = 0
     
-    c1 = df['High'].iloc[current_pos] > df['High'].iloc[current_pos-1]
-    c2 = df['Low'].iloc[current_pos] > df['High'].iloc[current_pos-2]
-    c3 = df['Low'].iloc[current_pos-1] > df['High'].iloc[current_pos-3]
+    # Calculate price changes
+    df['PriceChange'] = df['Close'].pct_change()
     
-    if c1 and c2 and c3:
-        return 2
+    # Calculate volume ratio (current volume / average volume)
+    df['VolumeRatio'] = df['Volume'] / df['Volume'].rolling(window=20).mean()
     
-    c1 = df['Low'].iloc[current_pos] < df['Low'].iloc[current_pos-1]
-    c2 = df['High'].iloc[current_pos] < df['Low'].iloc[current_pos-2]
-    c3 = df['High'].iloc[current_pos-1] < df['Low'].iloc[current_pos-3]
+    # Pattern detection logic
+    for i in range(pattern_config['pattern_length'], len(df)):
+        # Get the window of data
+        window = df.iloc[i-pattern_config['pattern_length']:i]
+        
+        # Check if price changes are within bounds
+        price_changes = window['PriceChange'].abs()
+        if not (price_changes >= pattern_config['min_price_change']).all() or \
+           not (price_changes <= pattern_config['max_price_change']).all():
+            continue
+            
+        # Check volume condition
+        if window['VolumeRatio'].iloc[-1] < pattern_config['volume_threshold']:
+            continue
+            
+        # Pattern recognition logic
+        if pattern_config['use_simplified']:
+            # Simplified pattern: Two consecutive candles with opposite directions
+            if window['PriceChange'].iloc[-1] > 0 and window['PriceChange'].iloc[-2] < 0:
+                df.loc[window.index[-1], 'TotalSignal'] = 2  # Buy signal
+            elif window['PriceChange'].iloc[-1] < 0 and window['PriceChange'].iloc[-2] > 0:
+                df.loc[window.index[-1], 'TotalSignal'] = 1  # Sell signal
+        else:
+            # More complex pattern: Three candles with specific relationships
+            if window['PriceChange'].iloc[-1] > 0 and \
+               window['PriceChange'].iloc[-2] < 0 and \
+               window['PriceChange'].iloc[-3] < 0:
+                df.loc[window.index[-1], 'TotalSignal'] = 2  # Buy signal
+            elif window['PriceChange'].iloc[-1] < 0 and \
+                 window['PriceChange'].iloc[-2] > 0 and \
+                 window['PriceChange'].iloc[-3] > 0:
+                df.loc[window.index[-1], 'TotalSignal'] = 1  # Sell signal
     
-    if c1 and c2 and c3:
-        return 1
-
-    return 0
-
-def original_total_signal(df, current_candle):
-    current_pos = df.index.get_loc(current_candle)
+    # Convert signals to integer after all calculations
+    df['TotalSignal'] = df['TotalSignal'].astype(int)
     
-    if current_pos < 3:
-        return 0
+    signal_counts = df['TotalSignal'].value_counts()
+    print("\nSignal distribution:")
+    print(f"No signal: {signal_counts.get(0, 0)}")
+    print(f"Sell signals: {signal_counts.get(1, 0)}")
+    print(f"Buy signals: {signal_counts.get(2, 0)}")
     
-    c1 = df['High'].iloc[current_pos] > df['High'].iloc[current_pos-1]
-    c2 = df['High'].iloc[current_pos-1] > df['Low'].iloc[current_pos]
-    c3 = df['Low'].iloc[current_pos] > df['High'].iloc[current_pos-2]
-    c4 = df['High'].iloc[current_pos-2] > df['Low'].iloc[current_pos-1]
-    c5 = df['Low'].iloc[current_pos-1] > df['High'].iloc[current_pos-3]
-    c6 = df['High'].iloc[current_pos-3] > df['Low'].iloc[current_pos-2]
-    c7 = df['Low'].iloc[current_pos-2] > df['Low'].iloc[current_pos-3]
-
-    if c1 and c2 and c3 and c4 and c5 and c6 and c7:
-        return 2
-    
-    c1 = df['Low'].iloc[current_pos] < df['Low'].iloc[current_pos-1]
-    c2 = df['Low'].iloc[current_pos-1] < df['High'].iloc[current_pos]
-    c3 = df['High'].iloc[current_pos] < df['Low'].iloc[current_pos-2]
-    c4 = df['Low'].iloc[current_pos-2] < df['High'].iloc[current_pos-1]
-    c5 = df['High'].iloc[current_pos-1] < df['Low'].iloc[current_pos-3]
-    c6 = df['Low'].iloc[current_pos-3] < df['High'].iloc[current_pos-2]
-    c7 = df['High'].iloc[current_pos-2] < df['High'].iloc[current_pos-3]
-
-    if c1 and c2 and c3 and c4 and c5 and c6 and c7:
-        return 1
-
-    return 0
-
-def add_total_signal(df, use_simplified=True):
-    if use_simplified:
-        df['TotalSignal'] = df.progress_apply(lambda row: total_signal(df, row.name), axis=1)
-    else:
-        df['TotalSignal'] = df.progress_apply(lambda row: original_total_signal(df, row.name), axis=1)
     return df
 
-def add_pointpos_column(df, signal_column):
-    def pointpos(row):
-        if row[signal_column] == 2:
-            return row['Low'] - 1e-4
-        elif row[signal_column] == 1:
-            return row['High'] + 1e-4
-        else:
-            return np.nan
-
-    df['pointpos'] = df.apply(lambda row: pointpos(row), axis=1)
+def add_pointpos_column(df, signal_column='TotalSignal'):
+    df = df.copy()
+    df['pointpos'] = None
+    
+    # Add entry points for visualization
+    df.loc[df[signal_column] == 2, 'pointpos'] = df['Low'] * 0.999  # Buy signals
+    df.loc[df[signal_column] == 1, 'pointpos'] = df['High'] * 1.001  # Sell signals
+    
     return df
 
 def multi_timeframe_signal(df):
-    df_1h = df.resample('1H').agg({'Open': 'first', 'High': 'max', 'Low': 'min', 'Close': 'last'})
-    df_4h = df.resample('4H').agg({'Open': 'first', 'High': 'max', 'Low': 'min', 'Close': 'last'})
+    df = df.copy()
     
-    df_1h = add_total_signal(df_1h)
-    df_4h = add_total_signal(df_4h)
+    # Calculate signals for different timeframes
+    df['Signal_1D'] = generate_signals(df, DEFAULT_PATTERN_CONFIG)['TotalSignal']
+    df['Signal_4H'] = generate_signals(df.resample('4H').agg({
+        'Open': 'first',
+        'High': 'max',
+        'Low': 'min',
+        'Close': 'last',
+        'Volume': 'sum'
+    }), DEFAULT_PATTERN_CONFIG)['TotalSignal']
     
-    df['Signal_1h'] = np.nan
-    df['Signal_4h'] = np.nan
-    
-    for idx in df.index:
-        h1_idx = idx.floor('1H')
-        if h1_idx in df_1h.index:
-            df.loc[idx, 'Signal_1h'] = df_1h.loc[h1_idx, 'TotalSignal']
-        else:
-            df.loc[idx, 'Signal_1h'] = 0
-            
-        h4_idx = idx.floor('4H')
-        if h4_idx in df_4h.index:
-            df.loc[idx, 'Signal_4h'] = df_4h.loc[h4_idx, 'TotalSignal']
-        else:
-            df.loc[idx, 'Signal_4h'] = 0
-    
+    # Combine signals (both timeframes must agree)
     df['CombinedSignal'] = 0
-    df.loc[(df['TotalSignal'] == 2) & (df['Signal_1h'] == 2), 'CombinedSignal'] = 2
-    df.loc[(df['TotalSignal'] == 1) & (df['Signal_1h'] == 1), 'CombinedSignal'] = 1
+    df.loc[(df['Signal_1D'] == 2) & (df['Signal_4H'] == 2), 'CombinedSignal'] = 2
+    df.loc[(df['Signal_1D'] == 1) & (df['Signal_4H'] == 1), 'CombinedSignal'] = 1
     
     return df
